@@ -1,0 +1,6 @@
+*.dll
+*.pdb
+.vs
+obj/**
+bin/**
+runtimes/**
