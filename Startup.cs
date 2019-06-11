@@ -9,7 +9,8 @@ using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Bot.Builder.EchoBot;
-using EchoBot.Bots;
+using EchoBot.Dialogs;
+using ConnectHubRegisterBot.Bots;
 
 namespace Microsoft.BotBuilderSamples
 {
@@ -33,7 +34,7 @@ namespace Microsoft.BotBuilderSamples
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
 
             // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.
-            services.AddTransient<IBot, ConnectHubBot>();
+            // services.AddTransient<IBot, ConnectHubBot>();
 
             // Create the storage we'll be using for User and Conversation state. (Memory is great for testing purposes.) 
             services.AddSingleton<IStorage, MemoryStorage>();
@@ -43,6 +44,12 @@ namespace Microsoft.BotBuilderSamples
 
             // Create the Conversation state. 
             services.AddSingleton<ConversationState>();
+
+            // The Dialog that will be run by the bot.
+            services.AddSingleton<RegistrationDialog>();
+
+            // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.
+            services.AddTransient<IBot, ConnectHubBot<RegistrationDialog>>();
 
         }
 
