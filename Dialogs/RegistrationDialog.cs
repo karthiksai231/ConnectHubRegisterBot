@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EchoBot.APIWrapper;
 using EchoBot.Models;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
@@ -185,7 +184,7 @@ namespace EchoBot.Dialogs
             {
                 using (var client = new HttpClient())
                 {
-                    var requestUri = new Uri("http://localhost:5000/api/auth/register");
+                    var requestUri = new Uri("https://connecthubonline.com/api/auth/register");
                     var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
 
                     var requestBody = JsonConvert.SerializeObject(userProfile);
