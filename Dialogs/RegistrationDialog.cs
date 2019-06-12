@@ -1,16 +1,23 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using EchoBot.APIWrapper;
 using EchoBot.Models;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
+using Newtonsoft.Json;
 
 namespace EchoBot.Dialogs
 {
     public class RegistrationDialog : ComponentDialog
     {
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
+        private readonly IHttpClientFactory _httpClientFactory;
+
         public RegistrationDialog(UserState userState) : base(nameof(RegistrationDialog))
         {
             _userProfileAccessor = userState.CreateProperty<UserProfile>("UserProfile");
@@ -143,10 +150,24 @@ namespace EchoBot.Dialogs
                 userProfile.City = (string)stepContext.Values["city"];
                 userProfile.Country = (string)stepContext.Values["country"];
                 userProfile.Password = (string)stepContext.Values["password"];
+                userProfile.Gender = (string)stepContext.Values["gender"];
 
                 var msg = $"I have your name as {userProfile.UserName}, DateOfBirth as {userProfile.DateOfBirth}, city as {userProfile.City}, country as {userProfile.Country}";
 
                 await stepContext.Context.SendActivityAsync(MessageFactory.Text(msg), cancellationToken);
+
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Please wait while registering!!!"), cancellationToken);
+                var result = await RegisterUser(userProfile, stepContext, cancellationToken);
+
+                if (result != null)
+                {
+                    if(!string.IsNullOrWhiteSpace(result.UserName))
+                    {
+                        await stepContext.Context
+                            .SendActivityAsync(
+                            MessageFactory.Text($"You can now login as UserName: {result.UserName} with Password: {userProfile.Password}"), cancellationToken);
+                    }
+                }
             }
             else
             {
@@ -155,6 +176,40 @@ namespace EchoBot.Dialogs
 
             // WaterfallStep always finishes with the end of the Waterfall or with another dialog, here it is the end.
             return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
+        }
+
+        private async Task<UserProfile> RegisterUser(UserProfile userProfile, WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            string apiResponse = string.Empty;
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var requestUri = new Uri("http://localhost:5000/api/auth/register");
+                    var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
+
+                    var requestBody = JsonConvert.SerializeObject(userProfile);
+
+                    request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+
+                    var result = await client.SendAsync(request);
+
+                    apiResponse = result.Content.ReadAsStringAsync().Result;
+
+                    // Attempt to deserialise the reponse to the desired type, otherwise throw an expetion with the response from the api.
+                    if (apiResponse != "")
+                        return JsonConvert.DeserializeObject<UserProfile>(apiResponse);
+                }
+            }
+            catch (Exception)
+            {
+                var message = !string.IsNullOrWhiteSpace(apiResponse) ? apiResponse : "unknown";
+                await stepContext.Context
+                    .SendActivityAsync(MessageFactory
+                    .Text($"Unable to register please try again ({message})"), cancellationToken);
+            }
+
+            return null;
         }
     }
 }
